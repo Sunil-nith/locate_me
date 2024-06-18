@@ -13,7 +13,6 @@ class HiveService {
     if (userBox.isEmpty) {
       userBox.add(User(phoneNumber: '9035600155', password: '1234'));
       userBox.add(User(phoneNumber: '8090809090', password: '9876'));
-      userBox.add(User(phoneNumber: '7070272625', password: '1234'));
     }
   }
 

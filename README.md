@@ -1,16 +1,48 @@
-# locate_me2
+# LocateMe
 
-A new Flutter project.
+LocateMe is a Flutter application that allows users to track their current location, store location data using Hive for local storage, and calculate the distance traveled.
 
+
+
+## Requirements
+  1. Flutter SDK
+  2. IDE (e.g., Android Studio, VS Code)
+ 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+To get started with LocateMe, follow these steps:
 
-A few resources to get you started if this is your first Flutter project:
+1. **Clone the repository:**
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+   ```bash
+   git clone https://github.com/Sunil-nith/locate_me
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2. **Navigate to the project directory:**
+
+     ```bash
+     cd locate_me
+
+3. **Install dependencies:**
+
+    ```bash
+    flutter pub get
+4. **Run the app:**
+
+   ```bash
+   flutter run
+
+
+## Dependencies Used
+
+- **Flutter:** Flutter is used for cross-platform app development, enabling seamless experiences on both iOS and Android.
+- **Hive:**  Local NoSQL database for storing location data.
+- **geolocator:** Plugin for accessing device's GPS location.
+- **riverpod:** State management library for Flutter applications.
+- **dio:** Used for making API requests.
+- **freezed_annotation:** Used for JSON parsing.
+
+
+## Contact
+
+If you have any questions or need further assistance, please feel free to contact me at skjnv2009@gmail.com.
+
