@@ -36,7 +36,17 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: AuthProvider().isLoading ? const HomePage() : const LoginPage(),
+       home: Consumer<AuthProvider>(
+        builder: (context, authProvider, _) {
+          if (authProvider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (authProvider.isLoggedIn) {
+            return const HomePage();
+          } else {
+            return const LoginPage();
+          }
+        },
+      ),
       ),
     );
   }

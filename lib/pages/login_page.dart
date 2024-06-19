@@ -11,13 +11,14 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool obscurePassword = true;
 
-  void _login(BuildContext context) {
-    String phone = _phoneController.text;
-    String password = _passwordController.text;
+  void login(BuildContext context) {
+    String phone = phoneController.text;
+    String password = passwordController.text;
+
     Provider.of<AuthProvider>(context, listen: false).login(phone, password, context);
   }
 
@@ -59,7 +60,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: TextField(
-                  controller: _phoneController,
+                  controller: phoneController,
                   decoration: const InputDecoration(
                     hintText: 'Phone Number',
                     border: InputBorder.none,
@@ -77,18 +78,18 @@ class _LoginPageState extends State<LoginPage> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
+                  controller: passwordController,
+                  obscureText: obscurePassword,
                   decoration: InputDecoration(
                     hintText: 'Password',
                     border: InputBorder.none,
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        obscurePassword ? Icons.visibility : Icons.visibility_off,
                       ),
                       onPressed: () {
                         setState(() {
-                          _obscurePassword = !_obscurePassword;
+                          obscurePassword = !obscurePassword;
                         });
                       },
                     ),
@@ -103,23 +104,27 @@ class _LoginPageState extends State<LoginPage> {
                 color: Colors.blue,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: ElevatedButton(
-                onPressed: () => _login(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 15),
-                  child: Text(
-                    'Login',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
+              child: Consumer<AuthProvider>(
+                builder: (context, authProvider, _) => ElevatedButton(
+                  onPressed: authProvider.isLoading ? null : () => login(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    child: authProvider.isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Login',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
+                          ),
                   ),
                 ),
               ),

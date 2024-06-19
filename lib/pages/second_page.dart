@@ -50,41 +50,44 @@ class _SecondScreenState extends State<SecondScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userDetailsProvider = Provider.of<UserDetailsProvider>(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('LocateMe'),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Start Location: ${widget.startLoc}',
-                  style: const TextStyle(fontSize: 18.0),
+      body: Consumer<UserDetailsProvider>(
+        builder: (context, userDetailsProvider, _) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Start Location: ${widget.startLoc}',
+                      style: const TextStyle(fontSize: 18.0),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'End Location: ${widget.endLoc}',
+                      style: const TextStyle(fontSize: 18.0),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Total Distance: ${widget.totalDistance.toStringAsFixed(2)} km',
+                      style: const TextStyle(fontSize: 18.0),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  'End Location: ${widget.endLoc}',
-                  style: const TextStyle(fontSize: 18.0),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Total Distance: ${widget.totalDistance.toStringAsFixed(2)} km',
-                  style: const TextStyle(fontSize: 18.0),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _buildUserList(userDetailsProvider),
-          ),
-          _buildPaginationControls(userDetailsProvider),
-        ],
+              ),
+              Expanded(
+                child: _buildUserList(userDetailsProvider),
+              ),
+              _buildPaginationControls(userDetailsProvider),
+            ],
+          );
+        },
       ),
     );
   }
@@ -94,6 +97,8 @@ class _SecondScreenState extends State<SecondScreen> {
       return const Center(child: CircularProgressIndicator());
     } else if (userDetailsProvider.hasError && userDetailsProvider.userData.isEmpty) {
       return const Center(child: Text('Failed to load user data'));
+    } else if (userDetailsProvider.userData.isEmpty) {
+      return const Center(child: Text('No data available'));
     } else {
       return ListView.builder(
         controller: _scrollController,
