@@ -31,6 +31,22 @@ To get started with LocateMe, follow these steps:
    ```bash
    flutter run
 
+## Usage
+ ### Login
+After launching the app for the first time, use the following credentials to log in:
+1. Phone Number: 9035600155 and Password: 1234
+2. Phone Number: 8090809090 and Password: 9876
+
+These credentials will grant access to the application's features and allow you to navigate to the home screen.
+### Home Screen
+1. Tap the Start button to begin tracking your location.
+2. Use the Stop button to pause location updates and calculate distances.
+
+- After clicking the Stop button, LocateMe displays:
+ 1. Start Location: The initial location where tracking began.
+2. End Location: The final location where tracking was stopped.
+3. Distance Traveled: The calculated distance between the start and end locations.
+
 
 ## Dependencies Used
 
