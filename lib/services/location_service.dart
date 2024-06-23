@@ -2,7 +2,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationService {
-  /// Checks if location services are enabled.
+
   static Future<bool> checkLocationServicesEnabled() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -15,7 +15,6 @@ class LocationService {
     return serviceEnabled;
   }
 
-  /// Checks and requests location permissions.
   static Future<bool> checkAndRequestLocationPermissions() async {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied ||
@@ -40,7 +39,6 @@ class LocationService {
     return true;
   }
 
-  /// Fetches the current location.
   static Future<Position?> getCurrentPosition() async {
     try {
       return await Geolocator.getCurrentPosition(

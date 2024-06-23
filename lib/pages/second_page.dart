@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:locate_me2/providers/user_details_provider.dart';
 
-class SecondScreen extends StatefulWidget {
+class SecondScreen extends ConsumerStatefulWidget {
   final String startLoc;
   final String endLoc;
   final double totalDistance;
@@ -15,10 +15,10 @@ class SecondScreen extends StatefulWidget {
   });
 
   @override
-  State<SecondScreen> createState() => _SecondScreenState();
+  ConsumerState<SecondScreen> createState() => _SecondScreenState();
 }
 
-class _SecondScreenState extends State<SecondScreen> {
+class _SecondScreenState extends ConsumerState<SecondScreen> {
   late ScrollController _scrollController;
 
   @override
@@ -26,7 +26,7 @@ class _SecondScreenState extends State<SecondScreen> {
     super.initState();
     _scrollController = ScrollController();
     Future.microtask(() {
-      Provider.of<UserDetailsProvider>(context, listen: false).fetchUserDetails();
+      ref.read(userDetailsProvider.notifier).fetchUserDetails();
     });
   }
 
@@ -37,75 +37,87 @@ class _SecondScreenState extends State<SecondScreen> {
   }
 
   void _loadPreviousPage() {
-    final userDetailsProvider = Provider.of<UserDetailsProvider>(context, listen: false);
-    if (userDetailsProvider.currentPage > 1) {
-      userDetailsProvider.fetchUserDetails(page: userDetailsProvider.currentPage - 1);
+    final userDetailsState = ref.read(userDetailsProvider);
+    if (userDetailsState.currentPage > 1) {
+      ref
+          .read(userDetailsProvider.notifier)
+          .fetchUserDetails(page: userDetailsState.currentPage - 1);
     }
   }
 
   void _loadNextPage() {
-    final userDetailsProvider = Provider.of<UserDetailsProvider>(context, listen: false);
-    userDetailsProvider.fetchUserDetails(page: userDetailsProvider.currentPage + 1);
+    final userDetailsState = ref.read(userDetailsProvider);
+    ref
+        .read(userDetailsProvider.notifier)
+        .fetchUserDetails(page: userDetailsState.currentPage + 1);
   }
 
   @override
   Widget build(BuildContext context) {
+    final userDetailsState = ref.watch(userDetailsProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('LocateMe'),
       ),
-      body: Consumer<UserDetailsProvider>(
-        builder: (context, userDetailsProvider, _) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Start Location: ${widget.startLoc}',
-                      style: const TextStyle(fontSize: 18.0),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'End Location: ${widget.endLoc}',
-                      style: const TextStyle(fontSize: 18.0),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Total Distance: ${widget.totalDistance.toStringAsFixed(2)} km',
-                      style: const TextStyle(fontSize: 18.0),
-                    ),
-                  ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Start Location: ${widget.startLoc}',
+                  style: const TextStyle(fontSize: 18.0),
                 ),
-              ),
-              Expanded(
-                child: _buildUserList(userDetailsProvider),
-              ),
-              _buildPaginationControls(userDetailsProvider),
-            ],
-          );
-        },
+                const SizedBox(height: 10),
+                Text(
+                  'End Location: ${widget.endLoc}',
+                  style: const TextStyle(fontSize: 18.0),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Total Distance: ${widget.totalDistance.toStringAsFixed(2)} km',
+                  style: const TextStyle(fontSize: 18.0),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _buildUserList(userDetailsState),
+          ),
+          _buildPaginationControls(userDetailsState),
+        ],
       ),
     );
   }
 
-  Widget _buildUserList(UserDetailsProvider userDetailsProvider) {
-    if (userDetailsProvider.isLoading && userDetailsProvider.userData.isEmpty) {
+  Widget _buildUserList(UserDetailsState userDetailsState) {
+    if (userDetailsState.isLoading &&
+        userDetailsState
+                .userDataPerPage[userDetailsState.currentPage]?.isEmpty ==
+            true) {
       return const Center(child: CircularProgressIndicator());
-    } else if (userDetailsProvider.hasError && userDetailsProvider.userData.isEmpty) {
+    } else if (userDetailsState.hasError &&
+        userDetailsState
+                .userDataPerPage[userDetailsState.currentPage]?.isEmpty ==
+            true) {
       return const Center(child: Text('Failed to load user data'));
-    } else if (userDetailsProvider.userData.isEmpty) {
+    } else if (userDetailsState
+            .userDataPerPage[userDetailsState.currentPage]?.isEmpty ==
+        true) {
       return const Center(child: Text('No data available'));
     } else {
+      final users =
+          userDetailsState.userDataPerPage[userDetailsState.currentPage] ?? [];
       return ListView.builder(
         controller: _scrollController,
-        itemCount: userDetailsProvider.userData.length + (userDetailsProvider.isLoading ? 1 : 0),
+        itemCount: users.length + (userDetailsState.isLoading ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index < userDetailsProvider.userData.length) {
-            final user = userDetailsProvider.userData[index];
+          if (index < users.length) {
+            final user = users[index];
             return ListTile(
               leading: CircleAvatar(
                 backgroundImage: NetworkImage(user.avatar),
@@ -121,19 +133,20 @@ class _SecondScreenState extends State<SecondScreen> {
     }
   }
 
-  Widget _buildPaginationControls(UserDetailsProvider userDetailsProvider) {
+  Widget _buildPaginationControls(UserDetailsState userDetailsState) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
-            onPressed: userDetailsProvider.currentPage > 1 ? _loadPreviousPage : null,
+            onPressed:
+                userDetailsState.currentPage > 1 ? _loadPreviousPage : null,
             child: const Text('Previous Page'),
           ),
           const SizedBox(width: 16.0),
           ElevatedButton(
-            onPressed: userDetailsProvider.isLoading ? null : _loadNextPage,
+            onPressed: userDetailsState.isLoading ? null : _loadNextPage,
             child: const Text('Next Page'),
           ),
         ],

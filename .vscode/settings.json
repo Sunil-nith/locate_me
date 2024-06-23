@@ -4,6 +4,7 @@
         "Geolocator",
         "microtask",
         "nodoc",
-        "Prepopulate"
+        "Prepopulate",
+        "riverpod"
     ]
 }

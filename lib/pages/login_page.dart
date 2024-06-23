@@ -1,29 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:locate_me2/providers/auth_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool obscurePassword = true;
-
-  void login(BuildContext context) {
-    String phone = phoneController.text;
-    String password = passwordController.text;
-
-    Provider.of<AuthProvider>(context, listen: false).login(phone, password, context);
-  }
-
+  
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
@@ -104,28 +98,26 @@ class _LoginPageState extends State<LoginPage> {
                 color: Colors.blue,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Consumer<AuthProvider>(
-                builder: (context, authProvider, _) => ElevatedButton(
-                  onPressed: authProvider.isLoading ? null : () => login(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+              child: ElevatedButton(
+                onPressed: authState.isLoading ? null : () => login(context, ref),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    child: authProvider.isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Login',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                            ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  child: authState.isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Login',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
                           ),
-                  ),
+                        ),
                 ),
               ),
             ),
@@ -134,4 +126,11 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+
+  void login(BuildContext context, WidgetRef ref) {
+    String phone = phoneController.text;
+    String password = passwordController.text;
+    ref.read(authProvider.notifier).login(phone, password, context);
+  }
 }
+
