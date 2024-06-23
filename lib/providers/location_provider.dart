@@ -4,8 +4,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:locate_me2/models/trip_location_data.dart';
 import 'package:locate_me2/pages/second_page.dart';
+import 'package:locate_me2/services/location_service.dart';
 import '../services/hive_service.dart';
-import '../services/location_service.dart';
 
 class LocationProvider extends ChangeNotifier {
   Position? _currentPosition;
@@ -21,22 +21,44 @@ class LocationProvider extends ChangeNotifier {
   String _userId = '';
   late StreamSubscription<Position> _positionStream;
 
-  // Start tracking method
-  Future<void> startTracking(userPhone) async {
+   Future<void> startTracking(String userPhone) async {
     _userId = userPhone;
     _isLoading = true;
     notifyListeners();
     _startLocData = null;
     _endLocData = null;
     _currentTripId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    if (!await LocationService.checkLocationServicesEnabled()) {
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    if (!await LocationService.checkAndRequestLocationPermissions()) {
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     try {
-      _previousPosition = await LocationService.getCurrentLocation();
+      _previousPosition = await LocationService.getCurrentPosition();
+      if (_previousPosition == null) {
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
       _tracking = true;
       _addTripLocationData(_previousPosition!, _previousPosition!, 0);
       _trackingStatus = 'Tracking is in progress...';
       notifyListeners();
       _getPositionUpdates();
     } catch (e) {
+      Fluttertoast.showToast(
+        msg: "Error starting tracking: $e",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+      );
       print('Error starting tracking: $e');
     } finally {
       _isLoading = false;
@@ -44,7 +66,6 @@ class LocationProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
   // Stop tracking method
   void stopTracking(BuildContext context) {
     if (!_isTrackingStarted) {
@@ -204,6 +225,8 @@ class LocationProvider extends ChangeNotifier {
       );
     }
   }
+
+
 
   // Stop listening to position updates
   void stopListening() {

@@ -55,7 +55,7 @@ class AuthProvider extends ChangeNotifier {
       Fluttertoast.showToast(msg: "Login Successful");
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+        MaterialPageRoute(builder: (context) => const HomePage()),
       );
     } else {
       _isLoading = false;

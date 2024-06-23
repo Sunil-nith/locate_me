@@ -3,6 +3,7 @@
         "Fluttertoast",
         "Geolocator",
         "microtask",
+        "nodoc",
         "Prepopulate"
     ]
 }
