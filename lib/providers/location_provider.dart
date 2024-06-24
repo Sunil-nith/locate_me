@@ -68,9 +68,11 @@ class LocationNotifier extends StateNotifier<LocationState> {
   late StreamSubscription<Position> _positionStream;
   LocationNotifier() : super(LocationState());
 
-  
   Future<void> startTracking(String userPhone) async {
-    state = state.copyWith(isLoading: true, userId: userPhone, startLocData: null, endLocData: null);
+    state = LocationState(
+      isLoading: true,
+      userId: userPhone,
+    );
     String currentTripId = DateTime.now().millisecondsSinceEpoch.toString();
     state = state.copyWith(currentTripId: currentTripId);
     if (!await LocationService.checkLocationServicesEnabled() || !await LocationService.checkAndRequestLocationPermissions()) {
