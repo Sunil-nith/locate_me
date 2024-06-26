@@ -1,63 +1,57 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:locate_me2/models/user_model.dart';
-import 'package:locate_me2/pages/home_page.dart';
-import 'package:locate_me2/pages/login_page.dart';
-import '../services/hive_service.dart';
+import 'package:locate_me2/services/hive_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AuthState {
-  final bool isLoading;
-  final bool isLoggedIn;
-  final String? currentUserPhone;
+abstract class AuthState {
+  const AuthState();
+}
 
-  AuthState({
-    this.isLoading = false,
-    this.isLoggedIn = false,
-    this.currentUserPhone,
+class InitialAuthState extends AuthState {
+  const InitialAuthState();
+}
+
+class LoadingAuthState extends AuthState {
+  const LoadingAuthState();
+}
+
+class AuthenticatedAuthState extends AuthState {
+  final String currentUserPhone;
+
+  const AuthenticatedAuthState({
+    required this.currentUserPhone,
   });
+}
 
-  AuthState copyWith({
-    bool? isLoading,
-    bool? isLoggedIn,
-    String? currentUserPhone,
-  }) {
-    return AuthState(
-      isLoading: isLoading ?? this.isLoading,
-      isLoggedIn: isLoggedIn ?? this.isLoggedIn,
-      currentUserPhone: currentUserPhone ?? this.currentUserPhone,
-    );
-  }
+class ErrorAuthState extends AuthState {
+  final String errorMessage;
+
+  const ErrorAuthState(this.errorMessage);
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(AuthState()) {
+  AuthNotifier() : super(const InitialAuthState()) {
     _loadUserData();
   }
 
   Future<void> _loadUserData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? userPhone = prefs.getString('userPhone');
-    state = state.copyWith(
-      isLoggedIn: userPhone != null,
-      currentUserPhone: userPhone,
-    );
+    if (userPhone != null) {
+      state = AuthenticatedAuthState(currentUserPhone: userPhone);
+    }
   }
 
-  Future<void> login(
-      String phone, String password, BuildContext context) async {
-    state = state.copyWith(isLoading: true);
+  Future<void> login(String phone, String password) async {
+    state = const LoadingAuthState();
 
     if (phone.isEmpty) {
-      Fluttertoast.showToast(msg: "Phone number cannot be empty");
-      state = state.copyWith(isLoading: false);
+      state = const ErrorAuthState("Phone number cannot be empty");
       return;
     }
 
     if (password.isEmpty) {
-      Fluttertoast.showToast(msg: "Password cannot be empty");
-      state = state.copyWith(isLoading: false);
+      state = const ErrorAuthState("Password cannot be empty");
       return;
     }
 
@@ -67,36 +61,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('userPhone', user.phoneNumber);
 
-      state = state.copyWith(
-        isLoading: false,
-        isLoggedIn: true,
-        currentUserPhone: user.phoneNumber,
-      );
-
-      Fluttertoast.showToast(msg: "Login Successful");
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
+      state = AuthenticatedAuthState(currentUserPhone: user.phoneNumber);
     } else {
-      Fluttertoast.showToast(msg: "Invalid phone number or password");
-      state = state.copyWith(isLoading: false);
+      state = const ErrorAuthState("Invalid phone number or password");
     }
   }
 
-  void logout(BuildContext context) async {
+  Future<void> logout() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('userPhone');
-    state = state.copyWith(
-      isLoggedIn: false,
-      currentUserPhone: null,
-    );
-
-    Fluttertoast.showToast(msg: "Logged out successfully");
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-    );
+    state = const InitialAuthState();
   }
 
   Future<User?> getUser(String phone, String password) async {

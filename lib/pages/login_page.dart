@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:locate_me2/pages/home_page.dart';
 import '../providers/auth_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -14,10 +16,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool obscurePassword = true;
-  
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+
+    ref.listen<AuthState>(authProvider, (prevState, currState) {
+      if (currState is AuthenticatedAuthState) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } else if (currState is ErrorAuthState) {
+        Fluttertoast.showToast(msg: currState.errorMessage);
+      }
+    });
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
@@ -79,7 +93,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     border: InputBorder.none,
                     suffixIcon: IconButton(
                       icon: Icon(
-                        obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
                       onPressed: () {
                         setState(() {
@@ -93,34 +109,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
             const SizedBox(height: 20),
             Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: ElevatedButton(
-                onPressed: authState.isLoading ? null : () => login(context, ref),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  child: authState.isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Login',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                          ),
-                        ),
-                ),
-              ),
-            ),
+                child: ElevatedButton(
+                    onPressed: () => login(context, ref),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      child: authState is LoadingAuthState
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'Login',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                              ),
+                            ),
+                    ))),
           ],
         ),
       ),
@@ -130,7 +144,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void login(BuildContext context, WidgetRef ref) {
     String phone = phoneController.text;
     String password = passwordController.text;
-    ref.read(authProvider.notifier).login(phone, password, context);
+    ref.read(authProvider.notifier).login(phone, password);
   }
 }
-

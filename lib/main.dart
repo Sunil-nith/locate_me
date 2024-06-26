@@ -14,18 +14,27 @@ void main() async {
 }
 
 class MyApp extends ConsumerWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
+
     return MaterialApp(
       title: 'LocateMe',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: authState.isLoggedIn ? const HomePage() : const LoginPage(),
+      home: _buildInitialScreen(authState),
     );
+  }
+
+  Widget _buildInitialScreen(AuthState authState) {
+    if (authState is AuthenticatedAuthState) {
+      return const HomePage();
+    } else {
+      return const LoginPage();
+    }
   }
 }

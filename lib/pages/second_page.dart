@@ -20,13 +20,14 @@ class SecondScreen extends ConsumerStatefulWidget {
 
 class _SecondScreenState extends ConsumerState<SecondScreen> {
   late ScrollController _scrollController;
+  int currentPage = 1;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
     Future.microtask(() {
-      ref.read(userDetailsProvider.notifier).fetchUserDetails();
+      ref.read(userDetailsProvider(currentPage).notifier).fetchUserDetails();
     });
   }
 
@@ -37,24 +38,24 @@ class _SecondScreenState extends ConsumerState<SecondScreen> {
   }
 
   void _loadPreviousPage() {
-    final userDetailsState = ref.read(userDetailsProvider);
-    if (userDetailsState.currentPage > 1) {
-      ref
-          .read(userDetailsProvider.notifier)
-          .fetchUserDetails(page: userDetailsState.currentPage - 1);
+    if (currentPage > 1) {
+      setState(() {
+        currentPage--;
+      });
+      ref.read(userDetailsProvider(currentPage).notifier).fetchUserDetails();
     }
   }
 
   void _loadNextPage() {
-    final userDetailsState = ref.read(userDetailsProvider);
-    ref
-        .read(userDetailsProvider.notifier)
-        .fetchUserDetails(page: userDetailsState.currentPage + 1);
+    setState(() {
+      currentPage++;
+    });
+    ref.read(userDetailsProvider(currentPage).notifier).fetchUserDetails();
   }
 
   @override
   Widget build(BuildContext context) {
-    final userDetailsState = ref.watch(userDetailsProvider);
+    final userDetailsState = ref.watch(userDetailsProvider(currentPage));
 
     return Scaffold(
       appBar: AppBar(
@@ -95,62 +96,57 @@ class _SecondScreenState extends ConsumerState<SecondScreen> {
   }
 
   Widget _buildUserList(UserDetailsState userDetailsState) {
-    if (userDetailsState.isLoading &&
-        userDetailsState
-                .userDataPerPage[userDetailsState.currentPage]?.isEmpty ==
-            true) {
+    if (userDetailsState is LoadingUserDetailsState) {
       return const Center(child: CircularProgressIndicator());
-    } else if (userDetailsState.hasError &&
-        userDetailsState
-                .userDataPerPage[userDetailsState.currentPage]?.isEmpty ==
-            true) {
-      return const Center(child: Text('Failed to load user data'));
-    } else if (userDetailsState
-            .userDataPerPage[userDetailsState.currentPage]?.isEmpty ==
-        true) {
-      return const Center(child: Text('No data available'));
-    } else {
-      final users =
-          userDetailsState.userDataPerPage[userDetailsState.currentPage] ?? [];
+    } else if (userDetailsState is ErrorUserDetailsState) {
+      return Center(child: Text(userDetailsState.errorMessage));
+    } else if (userDetailsState is LoadedUserDetailsState) {
+      final users = userDetailsState.users;
       return ListView.builder(
         controller: _scrollController,
-        itemCount: users.length + (userDetailsState.isLoading ? 1 : 0),
+        itemCount: users.length,
         itemBuilder: (context, index) {
-          if (index < users.length) {
-            final user = users[index];
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundImage: NetworkImage(user.avatar),
-              ),
-              title: Text('${user.first_name} ${user.last_name}'),
-              subtitle: Text(user.email),
-            );
-          } else {
-            return const Center(child: CircularProgressIndicator());
-          }
+          final user = users[index];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundImage: NetworkImage(user.avatar),
+            ),
+            title: Text('${user.first_name} ${user.last_name}'),
+            subtitle: Text(user.email),
+          );
         },
       );
+    } else {
+      return const Center(child: Text('No data available'));
     }
   }
 
   Widget _buildPaginationControls(UserDetailsState userDetailsState) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed:
-                userDetailsState.currentPage > 1 ? _loadPreviousPage : null,
-            child: const Text('Previous Page'),
+  bool isLastPage =
+      userDetailsState is LoadedUserDetailsState &&
+      userDetailsState.users.isEmpty;
+
+  return Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: currentPage > 1 ? _loadPreviousPage : null,
+          child: const Text('Previous Page'),
+        ),
+        const SizedBox(width: 16.0),
+        ElevatedButton(
+          onPressed: isLastPage || userDetailsState is LoadingUserDetailsState
+              ? null
+              : _loadNextPage,
+          child: Text(
+            isLastPage ? 'Last Page' : 'Next Page',
           ),
-          const SizedBox(width: 16.0),
-          ElevatedButton(
-            onPressed: userDetailsState.isLoading ? null : _loadNextPage,
-            child: const Text('Next Page'),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 }

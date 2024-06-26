@@ -2,102 +2,88 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:locate_me2/pages/second_page.dart';
 import '../models/trip_location_data.dart';
 import '../services/location_service.dart';
 import '../services/hive_service.dart';
 
-class LocationState {
-  final Position? currentPosition;
-  final Position? previousPosition;
-  final bool tracking;
-  final double totalDistance;
-  final TripLocationData? startLocData;
-  final TripLocationData? endLocData;
-  final bool isLoading;
+abstract class LocationState {
+  const LocationState();
+}
+
+class InitialLocationState extends LocationState {
+  const InitialLocationState();
+}
+
+class LoadingLocationState extends LocationState {
+  const LoadingLocationState();
+}
+
+class TripStartedLocationState extends LocationState {
+  final Position previousPosition;
   final String trackingStatus;
-  final bool isTrackingStarted;
-  final String? currentTripId;
+  final String currentTripId;
   final String userId;
 
-  LocationState({
-    this.currentPosition,
-    this.previousPosition,
-    this.tracking = false,
-    this.totalDistance = 0.0,
+  const TripStartedLocationState({
+    required this.previousPosition,
+    required this.trackingStatus,
+    required this.currentTripId,
+    required this.userId,
+  });
+}
+
+class TripCompletedLocationState extends LocationState {
+  final TripLocationData? startLocData;
+  final TripLocationData? endLocData;
+  final double totalDistance;
+
+  const TripCompletedLocationState({
     this.startLocData,
     this.endLocData,
-    this.isLoading = false,
-    this.trackingStatus = '',
-    this.isTrackingStarted = false,
-    this.currentTripId,
-    this.userId = '',
+    required this.totalDistance,
   });
+}
 
-  LocationState copyWith({
-    Position? currentPosition,
-    Position? previousPosition,
-    bool? tracking,
-    double? totalDistance,
-    TripLocationData? startLocData,
-    TripLocationData? endLocData,
-    bool? isLoading,
-    String? trackingStatus,
-    bool? isTrackingStarted,
-    String? currentTripId,
-    String? userId,
-  }) {
-    return LocationState(
-      currentPosition: currentPosition ?? this.currentPosition,
-      previousPosition: previousPosition ?? this.previousPosition,
-      tracking: tracking ?? this.tracking,
-      totalDistance: totalDistance ?? this.totalDistance,
-      startLocData: startLocData ?? this.startLocData,
-      endLocData: endLocData ?? this.endLocData,
-      isLoading: isLoading ?? this.isLoading,
-      trackingStatus: trackingStatus ?? this.trackingStatus,
-      isTrackingStarted: isTrackingStarted ?? this.isTrackingStarted,
-      currentTripId: currentTripId ?? this.currentTripId,
-      userId: userId ?? this.userId,
-    );
-  }
+class ErrorLocationState extends LocationState {
+  final String errorMessage;
+
+  const ErrorLocationState(this.errorMessage);
 }
 
 class LocationNotifier extends StateNotifier<LocationState> {
   late StreamSubscription<Position> _positionStream;
-  LocationNotifier() : super(LocationState());
+
+  LocationNotifier() : super(const InitialLocationState());
 
   Future<void> startTracking(String userPhone) async {
-    state = LocationState(
-      isLoading: true,
-      userId: userPhone,
-    );
+    state = const LoadingLocationState();
     String currentTripId = DateTime.now().millisecondsSinceEpoch.toString();
-    state = state.copyWith(currentTripId: currentTripId);
     if (!await LocationService.checkLocationServicesEnabled() || !await LocationService.checkAndRequestLocationPermissions()) {
-      state = state.copyWith(isLoading: false);
+      state = const InitialLocationState();
       return;
     }
     try {
       Position? previousPosition = await LocationService.getCurrentPosition();
       if (previousPosition == null) {
-        state = state.copyWith(isLoading: false);
+        state = const InitialLocationState();
         return;
       }
-      state = state.copyWith(previousPosition: previousPosition, tracking: true, trackingStatus: 'Tracking is in progress...');
+      state = TripStartedLocationState(
+        previousPosition: previousPosition,
+        trackingStatus: 'Tracking is in progress...',
+        currentTripId: currentTripId,
+        userId: userPhone,
+      );
       _addTripLocationData(previousPosition, previousPosition, 0);
       _getPositionUpdates();
     } catch (e) {
-      Fluttertoast.showToast(msg: "Error starting tracking: $e", toastLength: Toast.LENGTH_LONG, gravity: ToastGravity.BOTTOM);
-      print('Error starting tracking: $e');
-    } finally {
-      state = state.copyWith(isLoading: false, isTrackingStarted: true);
+      state = ErrorLocationState("Error starting tracking: $e");
     }
   }
 
   void stopTracking(BuildContext context) {
-    if (!state.isTrackingStarted) {
+    final currentState = state;
+    if (currentState is! TripStartedLocationState) {
       _showAlert(context, 'Start Tracking', 'Please start the trip first.');
     } else {
       _showAlert(context, 'Confirm Stop', 'Are you sure you want to stop tracking?', isStopConfirmation: true);
@@ -136,89 +122,73 @@ class LocationNotifier extends StateNotifier<LocationState> {
       distanceFilter: 10,
     );
     _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) {
-      if (state.tracking) {
-        if (state.previousPosition != null) {
-          double distance = Geolocator.distanceBetween(
-            state.previousPosition!.latitude,
-            state.previousPosition!.longitude,
-            position.latitude,
-            position.longitude,
-          ) / 1000;
-          _addTripLocationData(state.previousPosition!, position, distance);
-          state = state.copyWith(previousPosition: position);
-        }
-      }
+      if (state is TripStartedLocationState) {
+        final currentState = state as TripStartedLocationState;
+        double distance = Geolocator.distanceBetween(
+          currentState.previousPosition.latitude,
+          currentState.previousPosition.longitude,
+          position.latitude,
+          position.longitude,
+        ) / 1000;
+        _addTripLocationData(currentState.previousPosition, position, distance);
+        state = TripStartedLocationState(
+          previousPosition: position,
+          trackingStatus: currentState.trackingStatus,
+          currentTripId: currentState.currentTripId,
+          userId: currentState.userId,
+        );
+            }
     });
   }
 
   void _addTripLocationData(Position previous, Position current, double distance) {
+    final currentState = state as TripStartedLocationState;
     final data = TripLocationData(
       previousLoc: '${previous.latitude}, ${previous.longitude}',
       currentLoc: '${current.latitude}, ${current.longitude}',
       distance: distance,
-      tripId: state.currentTripId!,
-      userId: state.userId,
+      tripId: currentState.currentTripId,
+      userId: currentState.userId,
     );
     HiveService.addTripLocationData(data);
   }
 
   void _performStopTracking() {
-    state = state.copyWith(isLoading: true, trackingStatus: 'Stopping tracking...', tracking: false);
+    final currentState = state as TripStartedLocationState;
+    state = const LoadingLocationState();
     stopListening();
-    HiveService.getTripLocationDataByTripId(state.currentTripId!).then((tripLocations) {
+    HiveService.getTripLocationDataByTripId(currentState.currentTripId).then((tripLocations) {
       TripLocationData? startLocData = tripLocations.isNotEmpty ? tripLocations.first : null;
       TripLocationData? endLocData = tripLocations.isNotEmpty ? tripLocations.last : null;
 
-      _calculateTotalDistance().then((total) {
-        state = state.copyWith(
+      _calculateTotalDistance(currentState.currentTripId).then((total) {
+        state = TripCompletedLocationState(
           startLocData: startLocData,
           endLocData: endLocData,
           totalDistance: total,
-          trackingStatus: '',
-          isLoading: false,
-          isTrackingStarted: false,
         );
       });
     }).catchError((error) {
       print('Error getting trip location data: $error');
-      state = state.copyWith(isLoading: false, trackingStatus: '', isTrackingStarted: false);
+      state = ErrorLocationState('Error getting trip location data: $error');
     });
   }
 
-  Future<double> _calculateTotalDistance() async {
+  Future<double> _calculateTotalDistance(String tripId) async {
     double totalDistance = 0;
     try {
-      if (state.currentTripId != null) {
-        final locations = await HiveService.getTripLocationDataByTripId(state.currentTripId!);
-        for (var location in locations) {
-          totalDistance += location.distance;
-        }
-        return totalDistance;
-      } else {
-        throw 'No current trip ID available';
+      final locations = await HiveService.getTripLocationDataByTripId(tripId);
+      for (var location in locations) {
+        totalDistance += location.distance;
       }
+      return totalDistance;
     } catch (e) {
       print('Error calculating total distance: $e');
       return 0;
     }
   }
 
-  void continueToSecondScreen(BuildContext context) {
-    if (state.startLocData != null && state.endLocData != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SecondScreen(
-            startLoc: state.startLocData!.previousLoc,
-            endLoc: state.endLocData!.currentLoc,
-            totalDistance: state.totalDistance,
-          ),
-        ),
-      );
-    } else {
-      Fluttertoast.showToast(msg: "Please complete a trip first to continue.", toastLength: Toast.LENGTH_SHORT, gravity: ToastGravity.BOTTOM);
-    }
-  }
+
 
   void stopListening() {
     _positionStream.cancel();
